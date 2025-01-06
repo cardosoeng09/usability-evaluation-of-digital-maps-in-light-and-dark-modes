@@ -29,10 +29,10 @@ To save the data from the evaluation, execute the scripts located in the `server
 ### Steps for Each Test Variation:
 For the **first variation**, run the following command:
 ```bash
-node server/modes/server_1.js```
+node server/modes/server_1.js
+```
 
 ## **Contact**
-f you have any questions or need further assistance, please contact the author:
+If you have any questions or need further assistance, please contact the author:
 
 Email: cardoso@ime.eb.br
-
