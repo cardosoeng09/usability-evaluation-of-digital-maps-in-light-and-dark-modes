@@ -1,0 +1,27 @@
+{
+  "options": {
+    "paths": {
+      "fonts": "fonts",
+      "styles": "styles"
+    }
+  },
+  "styles": {
+     "light": {
+      "style": "basic/style.json",
+      "tilejson": {
+        "type": "overlay"
+      }
+    },
+    "dark": {
+      "style": "dark/style.json",
+      "tilejson": {
+        "type": "overlay"
+      }
+    }
+  },
+  "data": {
+    "openmaptiles": {
+      "mbtiles": "tiles/maptiler-osm-2020-02-10-v3.11-south-america_brazil.mbtiles"
+    }
+  }
+}

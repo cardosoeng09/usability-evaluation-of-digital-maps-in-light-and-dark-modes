@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliação</title>
+
+    <!-- Para usar o maplibre-gl -->
+    <link href="https://unpkg.com/maplibre-gl@1.15.2/dist/maplibre-gl.css" rel="stylesheet">
+    <script src="https://unpkg.com/maplibre-gl@1.15.2/dist/maplibre-gl.js"></script>
+    <script src="questions.js"></script>
+
+
+    <script type="text/javascript">
+        var SERVER_IP_PUB = ''; //colocar aqui o ip da maquina que vai servir os tiles caso não seja servidor local
+        var isLocalEnvironment = true; //true para local, false para servidor
+        var port = '3002'; //cada versão tem que ter uma porta diferente para colocar os dados no backend
+        var tileserverUrl_dark;
+        var tileserverUrl_light;
+        var backendUrl;
+
+        if (isLocalEnvironment) {
+            tileserverUrl_dark = 'http://' + 'localhost' + ':8080/styles/dark/style.json';
+            tileserverUrl_light = 'http://' + 'localhost' + ':8080/styles/light/style.json';
+            backendUrl = 'http://' + 'localhost' + ':' + port;
+        } else {
+            tileserverUrl_dark = 'http://' + SERVER_IP_PUB + ':8080/styles/dark/style.json';
+            tileserverUrl_light = 'http://' + SERVER_IP_PUB + ':8080/styles/light/style.json';
+            backendUrl = 'http://' + SERVER_IP_PUB + ':' + port;
+        }
+    </script>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100vh; }
+
+        .mapboxgl-ctrl-scale {
+            background: none; /* Remove o fundo */
+            color: #000; /* Define a cor do texto */
+            border: none; /* Remove a borda */
+            font-family: Arial, sans-serif; /* Define a fonte */
+            font-size: 12px; /* Define o tamanho da fonte */
+            position: relative; /* Necessário para posicionar o texto corretamente */
+            padding: 0; /* Remove o padding */
+            text-align: center; /* Centraliza o texto */
+
+        }
+
+        .mapboxgl-ctrl-scale:before {
+            content: ''; /* Cria um pseudo-elemento para a linha */
+            position: absolute;
+            top: 20px; /* Ajusta a posição vertical da linha */
+            left: 0;
+            width: 100%; /* Faz a linha ter a largura total do controle */
+            height: 2px; /* Define a espessura da linha */
+            background-color: #000; /* Define a cor da linha */
+        }
+
+        .question-container-style_partial_screen {
+            position: absolute !important;
+            right: 0;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 1);
+            z-index: 1000;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 20px;
+            text-align: center;
+            display: none; /* Inicialmente escondido */
+            font-family: 'Arial', sans-serif; /* Define a fonte */
+            font-size: 28px; /* Aumenta o tamanho da fonte */  
+            font-weight: bold; /* Torna o texto em negrito */
+            color: white /* define a cor do texto da pergunta */
+        }
+
+        .question-container-style_full_screen {
+            position: absolute !important;
+            right: 0;
+            bottom: 0;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;  /* Alinha os itens em coluna */
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 20px;
+            text-align: center;
+            display: none; /* Inicialmente escondido */
+            font-family: 'Arial', sans-serif; /* Define a fonte */
+            font-size: 28px; /* Aumenta o tamanho da fonte */  
+            font-weight: bold; /* Torna o texto em negrito */
+            color: white /* define a cor do texto da pergunta */
+        }
+
+        #okClickQuestion {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .instruction-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-family: 'Arial', sans-serif; /* Define a fonte */
+            font-size: 28px; /* Aumenta o tamanho da fonte */  
+            color: white;
+        }
+
+        .instructions {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #closeInstructions {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .multiple-choice-options-row {
+            display: flex;
+            flex-wrap: wrap; /* Permite que as opções ocupem várias linhas se necessário */
+            justify-content: center; /* Centraliza as opções na tela */
+            gap: 10px; /* Espaçamento entre as opções */
+        }
+
+    </style>
+</head>
+
+<body>
+    
+    <!-- Contêiner genérico para perguntas de resposta do tipo clique -->
+    <div class="question-container-style_full_screen" id="clickQuestionContainer">
+        <p id="clickQuestionText"></p>
+        <button id="okClickQuestion">VISUALIZAR MAPA</button>
+    </div>
+
+
+    <!-- Contêiner genérico para perguntas de resposta escrita -->
+    <div class="question-container-style_partial_screen" id="writtenQuestionContainer" >
+        <p id="writtenQuestionText" style="text-align: center;"></p>
+        <textarea id="suggestionBox" rows="4" cols="50"></textarea>
+        <button id="okWrittenQuestion">Enviar resposta</button>
+    </div>
+
+    <!-- Contêiner para perguntas de múltipla escolha -->
+    <div class="question-container-style_partial_screen" id="multipleChoiceContainer">
+        <p id="multipleChoiceText" style="text-align: center;"></p>
+        <!-- Aqui você pode adicionar os elementos de entrada para as opções de múltipla escolha -->
+        <div id="multipleChoiceOptions"></div>
+        <button id="okMultipleChoice">Enviar resposta</button>
+    </div>
+
+    <div class="instruction-container" id="instructionScreen">
+        <div class="instructions">
+            <p>Você agora iniciará uma avalição cujo o objetivo é analisar a 'usabilidade', ou seja, facilidade de uso de dois tipos de mapas: um com tema claro e outro com tema escuro.</p>
+            <ul>
+                <li>Serão feitas solicitações de forma automática. Leia atentamente as instruções de cada solicitação.</li>
+                <li>Use o zoom para aproximar ou afastar a visualização do mapa.</li>
+                <li>Em algumas perguntas/solicitações será necessário clicar no mapa, utilize o botão direito do mouse para clicar no mapa quando for solicitado.</li>
+                <li>Para explorar diferentes áreas utilize o botão esquerdo do mouse para 'arrastar' o mapa.</li>
+            </ul>
+            <p>Sua participação é anônima e nenhum dado pessoal será coletado. Sua colaboração nos ajudará a identificar o estilo de mapa mais intuitivo. Obrigado!</p>
+            
+            <button id="closeInstructions">Começar a avaliação</button>
+        </div>
+    </div>
+    
+    <!-- Tela de Agradecimento -->
+    <div class="instruction-container" id="thankYouScreen" style="display: none;">
+        <div class="instructions">
+            <p>Obrigado por participar da nossa pesquisa!</p>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        var map = new maplibregl.Map({ //definicao da onde esta o mapa/estilo utilizado
+            container: 'map',
+            dragRotate: false,         // Desabilita a rotação com o botão direito do mouse
+            pitchWithRotate: false,    // Desabilita a inclinação com o botão direito do mouse
+            maxPitch: 0,               // Garante que o mapa não possa ser inclinado
+            //AQUI TROCA QUAL O ESTILO QUE VAI SER USADO - 'light' -> claro, 'dark' -> escuro. URL do estilo test_data/styles/,
+            //tem que referenciar ao 'caminho' da variavel que está no config.json
+            style: tileserverUrl_dark,
+            center: [-42.91,-22.35],
+            zoom: 9
+        });
+
+        function requestAndStoreToken() {
+            fetch(backendUrl+'/generate-token')
+            .then(response => response.json())
+            .then(data => {
+                localStorage.setItem('token', data.token); // Agora o token está armazenado e pode ser usado em futuras requisições
+            })
+            .catch(error => console.error('Erro ao solicitar o token:', error));
+        }
+        
+        function showThankYouScreen() { // Função para mostrar a tela de agradecimento
+            document.getElementById('thankYouScreen').style.display = 'flex';
+            document.getElementById('closeThankYou').addEventListener('clickQuestion', function() { // Configura o botão de fechar na tela de agradecimento para escondê-la
+                document.getElementById('thankYouScreen').style.display = 'none';
+            });
+        }
+
+        function sendDataToServer(lat, lng, questionId, setName, featuresData, timeDiff, leftClickCount, userResponse, mapStyle) {
+            const now = new Date();
+            const formattedTime = now.toISOString();
+            const token = localStorage.getItem('token'); // Obtem o token armazenado
+
+            fetch(backendUrl+'/coordinates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token // Inclui o token no cabeçalho
+                },
+                body: JSON.stringify({
+                    latitude: lat,
+                    longitude: lng,
+                    time: formattedTime,
+                    questionId: questionId, // ID da pergunta
+                    setName: setName, // Nome do conjunto de perguntas
+                    features: featuresData, // Dados das feições
+                    timeDiff: timeDiff, //Diferença de tempo do 'Ok' até o 'clique-resposta'
+                    leftClickCount: leftClickCount, //nr de cliques de arrasto
+                    userResponse: userResponse, // Inclui a resposta do usuário quando for resposta escrita
+                    mapStyle: mapStyle // Inclui o estilo do mapa
+                }),
+            })
+            .then(response => response.text())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        }
+
+        function addScaleToMap() {
+            // Adiciona o controle de escala ao mapa
+            var scale = new maplibregl.ScaleControl({
+                maxWidth: 100, // Largura máxima do controle de escala em pixels
+                unit: 'metric' // Unidade da escala, pode ser 'imperial' ou 'metric'
+            });
+            map.addControl(scale, 'bottom-left'); // Adiciona o controle de escala ao mapa, no canto inferior direito
+        }
+
+        function addTemporaryMarker(map, coordinates, duration = 3000) {
+            // Cria um elemento HTML para o marcador
+            var markerElement = document.createElement('div');
+            markerElement.style.width = '10px';
+            markerElement.style.height = '10px';
+            markerElement.style.backgroundColor = 'red';
+            markerElement.style.borderRadius = '50%';
+
+            // Cria um marcador e o adiciona ao mapa
+            var marker = new maplibregl.Marker({
+                element: markerElement
+            })
+            .setLngLat(coordinates)
+            .addTo(map);
+
+            // Remove o marcador após o tempo especificado (default: 3 segundos)
+            setTimeout(function() {
+                marker.remove();
+            }, duration);
+        }
+
+        function handleLeftClick(map) {
+            let leftClickCount = 0;
+            map.off('mousedown');
+            map.on('mousedown', function(e) {
+                leftClickCount++;
+            });
+            return function() {
+                return leftClickCount;
+            };
+        }
+
+        function activateMapClickListener(questionId, nextFunction, setName, requiredRightClicks) {
+            var startTime = new Date().getTime();   // Inicia o cronômetro para verificar o tempo de resposta
+            let getLeftClickCount = handleLeftClick(map);
+            let clickCount = 0; // Contador para o número de cliques realizados
+
+            map.getCanvas().style.cursor = 'crosshair'; // Altera o cursor para crosshair para a seleção de ponto
+
+            function handleRightClick(e) {
+                clickCount++;
+                const endTime = new Date();
+                const timeDiff = endTime.getTime() - startTime; // Diferença em milissegundos
+                e.preventDefault(); // Previne o menu de contexto padrão
+                const latLon = e.lngLat; // Captura as coordenadas do clique
+                const features = map.queryRenderedFeatures(e.point);
+                const featuresData = features.map(feature => ({ layer: feature.layer.id, properties: feature.properties })); 
+
+                let leftClickCount = getLeftClickCount() - 1;
+
+                addTemporaryMarker(map, latLon, 1000); // 3000 ms = 3 segundos
+
+
+                sendDataToServer(latLon.lat, latLon.lng, questionId, setName, featuresData, timeDiff, leftClickCount, null, map.getStyle().name); // Modifique para enviar os dados das feições
+
+                if (clickCount >= requiredRightClicks) {
+                    map.off('contextmenu', handleRightClick); // Remove o listener de clique direito após atingir o número necessário
+                    map.off('mousedown'); // Remove o listener de clique esquerdo para evitar contagens fora do contexto da pergunta
+                    map.getCanvas().style.cursor = ''; // Retorna o cursor para o estilo inicial
+
+                    // Chama a função para mostrar a próxima pergunta
+                    if (typeof nextFunction === 'function') {
+                        nextFunction();
+                    } else {
+                        console.log('nextFunction não é uma função');
+                    }
+                }
+            }
+
+            map.on('contextmenu', handleRightClick); // Adiciona o listener de clique direito
+        }
+
+        function showQuestion(questions, questionNumber) {
+            return new Promise((resolve, reject) => {
+                var question = questions[questionNumber - 1];
+
+                // Verifique se a pergunta existe antes de tentar acessar suas propriedades
+                if (!question) {
+                    console.log('Não há pergunta número ' + questionNumber);
+                    resolve(); // Resolve a promessa se não houver mais perguntas
+                    return;
+                }
+
+                // Atualiza a localização do mapa
+                if (question.location) {
+                    map.flyTo(question.location);
+                } else {
+                    console.log('A pergunta número ' + questionNumber + ' não tem uma localização definida.');
+                }
+
+                // Verifica se o tipo da pergunta é 'clickQuestion'
+                if (question.type === 'clickQuestion') {
+                    document.getElementById('clickQuestionText').textContent = question.text;
+                    document.getElementById('clickQuestionContainer').classList.add('question-container-style_full_screen');
+                    document.getElementById('clickQuestionContainer').style.display = 'flex';
+                    
+                    // Adiciona um ouvinte de evento ao botão 'ok'
+                    document.getElementById('okClickQuestion').addEventListener('click', function() {
+                        // Troca para o estilo de tela parcial
+                        document.getElementById('clickQuestionContainer').classList.remove('question-container-style_full_screen');
+                        document.getElementById('clickQuestionContainer').classList.add('question-container-style_partial_screen');
+
+                        // O mapa será exibido com o formato parcial, mas a pergunta ainda ficará visível
+                        document.getElementById('clickQuestionContainer').style.display = 'flex';
+                        // Oculta o botão 'okClickQuestion'
+                        document.getElementById('okClickQuestion').style.display = 'none';
+                        
+                        // Ativa o ouvinte de clique no mapa
+                        activateMapClickListener(question.phase + '_' + questionNumber, function() {
+                            document.getElementById('clickQuestionContainer').style.display = 'none'; // Esconde o contêiner da pergunta
+                            document.getElementById('okClickQuestion').style.display = 'flex'; //retorna o botão 'okClickQuestion'
+                            resolve(); // Resolve a promessa quando a pergunta foi respondida
+                        }, question.setName, question.rightClicks);
+                    }, { once: true });  // O ouvinte de evento é removido após ser chamado uma vez
+                }
+
+                // Verifica se o tipo da pergunta é 'writtenQuestion'
+                else if (question.type === 'writtenQuestion') {
+                    document.getElementById('writtenQuestionText').textContent = question.text;
+
+                    // Verifica se a questão vai ser exibida em tela cheia ou não
+                    if (question.fullScreen) {
+                        document.getElementById('writtenQuestionContainer').classList.remove('question-container-style_partial_screen');
+                        document.getElementById('writtenQuestionContainer').classList.add('question-container-style_full_screen');
+                    } else {
+                        document.getElementById('writtenQuestionContainer').classList.remove('question-container-style_full_screen');
+                        document.getElementById('writtenQuestionContainer').classList.add('question-container-style_partial_screen');
+                    }
+
+                    document.getElementById('writtenQuestionContainer').style.display = 'flex';
+
+                    // Desabilita o botão "ok" inicialmente
+                    var okButton = document.getElementById('okWrittenQuestion');
+                    okButton.disabled = true;
+
+                    // Listener para habilitar o botão quando o usuário começar a digitar
+                    var suggestionBox = document.getElementById('suggestionBox');
+                    suggestionBox.addEventListener('input', function() {
+                        if (suggestionBox.value.trim() !== "") {
+                            okButton.disabled = false;
+                        } else {
+                            okButton.disabled = true;
+                        }
+                    });
+
+                    let getLeftClickCount = handleLeftClick(map);
+
+                    var startTime = new Date().getTime();   // Inicia o cronômetro
+
+                    // Adiciona um ouvinte de evento ao botão 'ok'
+                    okButton.addEventListener('click', function() {
+                        // Esconde a pergunta atual
+                        document.getElementById('writtenQuestionContainer').style.display = 'none';
+
+                        // Captura a resposta do usuário
+                        var userResponse = suggestionBox.value;
+
+                        // Limpa a resposta do usuário para a próxima pergunta
+                        suggestionBox.value = '';
+
+                        var endTime = new Date().getTime(); // Para o cronômetro e calcula a diferença de tempo
+                        var timeDiff = endTime - startTime;
+
+                        let leftClickCount = getLeftClickCount();
+
+                        sendDataToServer(null, null, question.phase + '_' + questionNumber, question.setName, null, timeDiff, leftClickCount, userResponse, map.getStyle().name);
+
+                        resolve(); // Resolve a promessa quando a pergunta foi respondida
+                    }, { once: true });  // O ouvinte de evento é removido após ser chamado uma vez
+                }
+
+                // Verifica se o tipo da pergunta é 'multipleChoice'
+                else if (question.type === 'multipleChoice') {
+                    document.getElementById('multipleChoiceText').textContent = question.text;
+                    var optionsContainer = document.getElementById('multipleChoiceOptions');
+
+                    var startTime = new Date().getTime();   // Inicia o cronômetro
+
+                    // Limpa as opções anteriores
+                    optionsContainer.innerHTML = '';
+
+                    // Desabilita o botão "ok" inicialmente
+                    var okButton = document.getElementById('okMultipleChoice');
+                    okButton.disabled = true;
+
+                    // Cria um novo elemento de entrada de rádio para cada opção
+                    question.options.forEach(function(option, index) {
+                        var input = document.createElement('input');
+                        input.type = 'radio';
+                        input.id = 'option' + index;
+                        input.name = 'multipleChoice';
+                        input.value = option;
+
+                        var label = document.createElement('label');
+                        label.htmlFor = input.id;
+                        label.textContent = option;
+
+                        optionsContainer.appendChild(input);
+                        optionsContainer.appendChild(label);
+                        optionsContainer.appendChild(document.createElement('br')); //adiciona uma quebra de linha
+
+                        // Adiciona um listener para habilitar o botão quando uma opção é selecionada
+                        input.addEventListener('change', function() {
+                            okButton.disabled = false;
+                        });
+                    });
+                    
+                    // Verifica se a questão vai ser exibida em tela cheia ou não
+                    if (question.fullScreen) {
+                        // Adicione a classe 'question-container-style_full_screen' ao contêiner de perguntas
+                        document.getElementById('multipleChoiceContainer').classList.remove('question-container-style_partial_screen');
+                        document.getElementById('multipleChoiceContainer').classList.add('question-container-style_full_screen');
+                        optionsContainer.classList.add('multiple-choice-options-row');  // Alinha as opções lado a lado
+                    } else {
+                        // Remova a classe 'question-container-style_full_screen' do contêiner de perguntas
+                        document.getElementById('multipleChoiceContainer').classList.remove('question-container-style_full_screen'); 
+                        document.getElementById('multipleChoiceContainer').classList.add('question-container-style_partial_screen');
+                        optionsContainer.classList.remove('multiple-choice-options-row'); // Remove a classe que alinha as opções lado a lado
+                    }
+
+                    document.getElementById('multipleChoiceContainer').style.display = 'flex';
+
+                    let getLeftClickCount = handleLeftClick(map);
+
+                    okButton.addEventListener('click', function() {
+                        document.getElementById('multipleChoiceContainer').style.display = 'none';
+                        var selectedOption = document.querySelector('input[name="multipleChoice"]:checked');
+
+                        // Verifica se uma opção foi selecionada
+                        if (selectedOption) {
+                            var userResponse = selectedOption.value;
+                            console.log('Resposta selecionada: ' + userResponse);
+
+                            var endTime = new Date().getTime(); // Para o cronômetro e calcula a diferença de tempo
+                            var timeDiff = endTime - startTime;
+                            let leftClickCount = getLeftClickCount();
+                            sendDataToServer(null, null, question.phase+'_'+questionNumber, question.setName, null, timeDiff, leftClickCount, userResponse, map.getStyle().name);
+                        } else {
+                            console.log('Nenhuma resposta selecionada');
+                        }
+
+                        resolve();
+                    }, { once: true });
+                }
+
+                console.log('Pergunta nº: ' + questionNumber) // Mostra o número da pergunta no console
+            });
+        }
+
+        async function handleQuestions(questions) {
+            console.log('Iniciando bloco de perguntas');
+
+            // Continua com o teste
+            for (let i = 0; i < questions.length; i++) {
+                console.log('Mostrando pergunta nº: ' + (i+1));
+                await showQuestion(questions, i+1);
+                console.log('Pergunta nº: ' + (i+1) + ' concluída');
+            }
+
+            console.log('Bloco de perguntas concluído');
+        }
+
+        async function handleAllQuestions(testQuestions1, testQuestions2, quizQuestions, segundo_estilo){
+            console.log('Iniciando todos os blocos de perguntas');
+
+            // Aguarda o usuário fechar a tela de instruções
+            await new Promise((resolve, reject) => {
+                document.getElementById('closeInstructions').addEventListener('click', function() {
+                    document.getElementById('instructionScreen').style.display = 'none'; // Esconde a tela de instruções
+                    resolve(); // Resolve a promessa quando a tela de instruções é fechada
+                });
+            });
+
+            await handleQuestions(testQuestions1); // Primeiro bloco de teste
+            console.log('Primeiro bloco de teste concluído');
+            map.setStyle(segundo_estilo);
+
+            // Aguarda 2 segundos
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            await handleQuestions(testQuestions2); // Segundo bloco de teste
+            console.log('Segundo bloco de teste concluído');
+            await handleQuestions(quizQuestions); //Bloco de perguntas
+            console.log('Segundo bloco de teste concluído');
+            showThankYouScreen(); // Tela de agradecimento
+            console.log('Tela de agradecimento mostrada');
+        }
+
+        requestAndStoreToken(); // Chama a função para solicitar e armazenar o token
+
+        addScaleToMap(); //adiciona a escala no mapa
+
+        handleAllQuestions(testQuestions_2_dark, testQuestions_1, quizQuestions, tileserverUrl_light);
+
+   </script>
+</body>
+</html>
