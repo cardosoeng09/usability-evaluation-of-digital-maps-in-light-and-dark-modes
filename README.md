@@ -4,7 +4,7 @@ This repository is related to the project **Usability Evaluation of Digital Maps
 
 ## Project Overview
 
-- **Instructions and complete details** of the project are available in the provided [PDF document](path/to/your/document.pdf).
+- **Instructions and complete details** of the project are available in the provided [PDF document](master_thesis_dark_maps.pdf).
 - The **responses from the usability evaluation** are stored in the file `usability_evaluation_digital_maps_results.json`.
 - A detailed explanation of these results, including how the data was obtained and analyzed, is included in the PDF document.
 
