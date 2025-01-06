@@ -15,6 +15,24 @@ This repository is related to the project **Usability Evaluation of Digital Maps
 To set up and run the server for the usability evaluation, follow these steps:
 
 1. **Start the server:**
-   Use the following command in the folder 'server':
-   
-  node server_1.js (the same for the other 3 files)
+  # Instructions
+
+## Ensure Dependencies are Installed
+Ensure you have all required dependencies installed.
+
+## Server Configuration
+The server will automatically read and follow the configuration specified in the file `config.json`.
+
+## Saving Evaluation Data
+To save the data from the evaluation, execute the scripts located in the `server/modes/` directory.
+
+### Steps for Each Test Variation:
+For the **first variation**, run the following command:
+```bash
+node server/modes/server_1.js
+
+## **Contact**
+f you have any questions or need further assistance, please contact the author:
+
+Email: cardoso@ime.eb.br
+
