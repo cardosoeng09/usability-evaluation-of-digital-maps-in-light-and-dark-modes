@@ -10,29 +10,34 @@ This repository is related to the project **Usability Evaluation of Digital Maps
 
 ## Usage Instructions
 
-### Running the Server
+### Running the TileServer
 
-To set up and run the server for the usability evaluation, follow these steps:
+To run the TileServer, use the following command:
 
-1. **Start the server:**
-  # Instructions
-
-## Ensure Dependencies are Installed
-Ensure you have all required dependencies installed.
-
-## Server Configuration
-The server will automatically read and follow the configuration specified in the file `config.json`.
-
-## Saving Evaluation Data
-To save the data from the evaluation, execute the scripts located in the `server/modes/` directory.
-
-### Steps for Each Test Variation:
-For the **first variation**, run the following command:
 ```bash
-node server/modes/server_1.js
+tileserver-gl
 ```
 
+The server will automatically read and follow the configuration specified in the file `config.json`.
+
+**More details about the TileServer functionality can be found at:** [TileServer-GL GitHub Repository](https://github.com/maptiler/tileserver-gl)
+
+### Saving Evaluation Data
+
+To save the data from the evaluation, execute the scripts located in the `server/` directory.
+
+For example, for the **first variation**, run the following command:
+
+```bash
+node server/server_1.js
+```
+
+### Accessing Each Evaluation Variation
+
+After starting both the TileServer and the backend server for data extraction, access the `.html` files located in the `public/` directory to perform each of the four variations.
+
 ## **Contact**
+
 If you have any questions or need further assistance, please contact the author:
 
 Email: cardoso@ime.eb.br
